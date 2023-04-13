@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="movie.mapper.MovieMapper">
+	<select id="listMovie" resultType="movie.dto.MovieDto">
+		select movie_idx,title,story,
+		opening,poster, deleted,star_avg
+		from movie
+		where deleted=0;
+	</select>
+	<insert id="insertReview" parameterType="movie.dto.ReviewDto">
+		insert into
+		review(title,contents,writer,review_date,movie_idx,writer_id)
+		values(#{title},#{contents},#{writer},now(),#{movieIdx},#{writerId})
+	</insert>
+	<!-- 여기부터 예약하는 페이지 -->
+	<select id="date" resultType="movie.dto.CanReservationDateDto"
+		parameterType="int">
+		select movie_idx,can_reservation_date,date_idx
+		from
+		can_reservation_date
+		where movie_idx=#{movieIdx}
+	</select>
+
+	<insert id="insertMovie">
+		insert into movie(title,story,opening,poster)
+		values (#{title},#{story},#{opening},#{poster})
+	</insert>
+	
+	<insert id="insertReservation">
+		insert into
+		reservation(reservation_name,reservation_date,movie_idx,reservation_number,reservation_id)
+		values(#{reservationName},#{reservationDate},#{movieIdx},#{reservationNumber},#{reservationId})
+		<selectKey keyProperty="reservationIdx" resultType="Integer">
+			select last_insert_id();
+		</selectKey>
+		
+	</insert>
+
+	<!--  좌석 넣는거  -->
+	<insert id="insertSeat">
+	insert into seat(reservation_idx,reserved_seat)
+	values
+		<foreach collection="registSeat" item="registSeat" separator=",">
+		( #{reservationIdx}, #{registSeat} )
+		</foreach>
+	</insert>
+	<!-- 끝 -->
+	<select id="listAnnouncementDto"
+		resultType="movie.dto.AnnouncementDto">
+		select announcement_idx,title,contents,announcement_date
+		from announcement
+		where deleted = 0;
+	</select>
+	<select id="announcementdetail"
+		resultType="movie.dto.AnnouncementDto" parameterType="int">
+		select
+		announcement_idx,title,contents,announcement_date
+		from announcement
+		where deleted = 0 and announcement_idx=#{annoucementIdx}
+	</select>
+	<insert id="insertComments"
+		parameterType="movie.dto.CommentsDto">
+		insert into comments (contents,writer,star,movie_idx)
+		values(#{contents},#{writer},#{star},#{movieIdx})
+	</insert>
+
+	<!-- ++++++++++++ 리뷰 리스트 조회 쿼리 +++++++++++ -->
+	<select id="selectReviewList" resultType="movie.dto.ReviewDto"
+		parameterType="int">
+		select review_idx, title, count, contents,
+		writer,writer_id,movie_idx,
+		review_date
+		from review
+		where deleted = 0
+	</select>
+
+	<!-- +++++++++++ 리뷰 상세 조회 쿼리 +++++++++++ -->
+	<select id="selectReviewDetail" parameterType="int"
+		resultType="movie.dto.ReviewDto">
+		select title, count, contents, writer,
+		review_date,movie_idx,review_idx,writer_id
+		from review
+		where deleted = 0 and
+		review_idx = #{reviewIdx}
+	</select>
+
+	<!-- ++++++++++ 조회수 증가 쿼리 +++++++ -->
+	<update id="updateCount" parameterType="int">
+		update review
+		set count =
+		count + 1
+		where review_idx = #{reviewIdx}
+	</update>
+
+	<!-- ++++++++ 리뷰 수정 쿼리 +++++++++ -->
+	<update id="updateReview" parameterType="movie.dto.ReviewDto">
+		update review
+		set title = #{title},
+		contents = #{contents},
+		review_date= now()
+		where review_idx = #{reviewIdx}
+	</update>
+	<!-- updated_id = #{updatedId} -->
+	<!-- ++++++++ 리뷰 삭제 쿼리 +++++++++ -->
+	<delete id="deleteReview" parameterType="int">
+		update review
+		set
+		deleted= 1
+		where
+		review_idx = #{reviewIdx}
+	</delete>
+	<!-- updated_dt = now(), updated_id = #{updatedId} -->
+
+	<!-- ++++++++ movieIdx 로 영화 정보 뽑아오는 쿼리 +++++++ -->
+	<select id="selectMovieInfo" parameterType="int"
+		resultType="movie.dto.MovieDto">
+		select title, story, opening, poster,movie_idx,star_avg
+		from movie
+		where
+		movie_idx = #{movieIdx}
+	</select>
+
+	<!-- ++++++++++++ 한줄평 리스트 조회 쿼리 +++++++++++ -->
+	<select id="selectCommentsList"
+		resultType="movie.dto.CommentsDto" parameterType="int">
+		select
+		comments_idx,writer, contents, star, movie_idx
+		from comments
+		where
+		movie_idx=#{movieIdx}
+	</select>
+
+	<!-- +++++++++ 별점 평균 쿼리 +++++++++++ -->
+	<select id="getStarAvg" resultType="double" parameterType="int">
+		select round(avg(star),1)
+		from comments
+		where movie_idx = #{movieIdx}
+	</select>
+
+	<!-- ++++++++++ 별점 평균 업데이트 쿼리 ++++++++++ -->
+	<update id="updateStarAvg" parameterType="movie.dto.MovieDto">
+		update movie
+		set
+		star_avg = #{starAvg}
+		where movie_idx =#{movieIdx}
+	</update>
+
+	<!-- 예약한 좌석 출력 -->
+	<select id="seatList" parameterType="int"
+		resultType="movie.dto.SeatDto">
+		select reserved_seat,reservation_idx
+		from seat
+		where reservation_idx =#{reservationIdx}
+	</select>
+	<select id="seatListDate" parameterType="String"
+		resultType="movie.dto.SeatDto">
+		select s.reserved_seat,s.reservation_idx
+		from seat as s 
+		inner join reservation as r on reservation_date = #{reservationDate}
+		where r.reservation_idx = s.reservation_idx;
+	</select>
+	<select id="reservationDetail" parameterType="int"
+		resultType="movie.dto.ReservationDto">
+		select
+		reservation_idx,reservation_name,reservation_id,reservation_date,reservation_number,movie_idx
+		from reservation
+		where reservation_idx = #{reservationIdx}
+	</select>
+	<select id="reservationIdx" parameterType="String"
+		resultType="movie.dto.ReservationDto">
+		select
+		reservation_idx,reservation_name,reservation_id,reservation_date,reservation_number,movie_idx
+		from reservation
+		where reservation_date = #{reservationDate}
+	</select>
+	<select id="reservationList" parameterType="String" resultType="movie.dto.ReservationDto">
+	select reservation_idx,reservation_name,reservation_id,reservation_date,reservation_number,movie_idx
+	from reservation
+	where reservation_id=#{reservationId}
+	</select>
+	<update id="deleteMovie" parameterType="movie.dto.MovieDto">
+	update movie
+		set
+		deleted = 1
+		where movie_idx =#{movieIdx}
+	</update>
+	<insert id="inserttime" parameterType="movie.dto.CanReservationDateDto">
+	insert into can_reservation_date(movie_idx,can_reservation_date)
+	values(#{movieIdx},#{canReservationDate})
+	
+	</insert>
+	<insert id="insertannouncement" parameterType="movie.dto.AnnouncementDto">
+	insert into announcement(title,contents,announcement_date)
+	values(#{title},#{contents},now())
+	</insert>
+</mapper>
